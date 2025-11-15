@@ -2,6 +2,7 @@ package com.example.springmssqlapi.controller;
 
 import com.example.springmssqlapi.entity.User;
 import com.example.springmssqlapi.service.UserService;
+import com.example.springmssqlapi.service.EmailService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -17,6 +18,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/users")
@@ -26,11 +28,12 @@ import java.util.List;
 public class UserController {
 
     private final UserService userService;
+    private final EmailService emailService;
 
     @PostMapping
     @Operation(
         summary = "Create a new user",
-        description = "Creates a new user in the system with validation"
+        description = "Creates a new user in the system with validation and sends a welcome email"
     )
     @ApiResponses(value = {
         @ApiResponse(responseCode = "201", description = "User created successfully",
@@ -45,6 +48,15 @@ public class UserController {
         log.info("POST /users - Creating new user with email: {}", user.getEmail());
 
         User savedUser = userService.saveUser(user);
+
+        // Send welcome email
+        try {
+            emailService.sendWelcomeEmail(savedUser.getEmail(), savedUser.getName());
+            log.info("Welcome email sent successfully to: {}", savedUser.getEmail());
+        } catch (Exception e) {
+            log.error("Failed to send welcome email to {}: {}", savedUser.getEmail(), e.getMessage());
+            // Don't fail user creation if email fails, just log the error
+        }
 
         log.info("POST /users - Successfully created user with ID: {}", savedUser.getId());
         return new ResponseEntity<>(savedUser, HttpStatus.CREATED);
@@ -157,5 +169,64 @@ public class UserController {
 
         log.info("DELETE /users/{} - Successfully deleted user", id);
         return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+    }
+
+    @PostMapping("/{id}/send-welcome-email")
+    @Operation(
+        summary = "Send welcome email",
+        description = "Sends a welcome email to an existing user"
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Email sent successfully"),
+        @ApiResponse(responseCode = "404", description = "User not found"),
+        @ApiResponse(responseCode = "500", description = "Failed to send email")
+    })
+    public ResponseEntity<Map<String, String>> sendWelcomeEmail(
+            @Parameter(description = "ID of the user to send welcome email to", required = true)
+            @PathVariable Long id) {
+
+        log.info("POST /users/{}/send-welcome-email - Sending welcome email", id);
+
+        User user = userService.getUser(id);
+
+        try {
+            emailService.sendWelcomeEmail(user.getEmail(), user.getName());
+            log.info("Welcome email sent successfully to user: {}", user.getEmail());
+            return ResponseEntity.ok(Map.of("message", "Welcome email sent successfully"));
+        } catch (Exception e) {
+            log.error("Failed to send welcome email to user {}: {}", id, e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Failed to send email: " + e.getMessage()));
+        }
+    }
+
+    @PostMapping("/send-test-email")
+    @Operation(
+        summary = "Send test email",
+        description = "Sends a test email to verify email configuration"
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Test email sent successfully"),
+        @ApiResponse(responseCode = "500", description = "Failed to send email")
+    })
+    public ResponseEntity<Map<String, String>> sendTestEmail(
+            @Parameter(description = "Test email request", required = true)
+            @RequestBody Map<String, String> request) {
+
+        String toEmail = request.get("email");
+        String subject = request.getOrDefault("subject", "Test Email");
+        String body = request.getOrDefault("body", "This is a test email from the Vendor Onboarding API.");
+
+        log.info("POST /users/send-test-email - Sending test email to: {}", toEmail);
+
+        try {
+            emailService.sendSimpleEmail(toEmail, subject, body);
+            log.info("Test email sent successfully to: {}", toEmail);
+            return ResponseEntity.ok(Map.of("message", "Test email sent successfully"));
+        } catch (Exception e) {
+            log.error("Failed to send test email to {}: {}", toEmail, e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Failed to send email: " + e.getMessage()));
+        }
     }
 }
