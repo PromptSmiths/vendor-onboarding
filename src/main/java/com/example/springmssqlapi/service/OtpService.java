@@ -12,7 +12,7 @@ import com.example.springmssqlapi.entity.Vendor;
 import com.example.springmssqlapi.repository.OtpCodeRepository;
 import com.example.springmssqlapi.repository.VendorRepository;
 
-import jakarta.transaction.Transactional;
+import javax.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -60,8 +60,8 @@ public class OtpService {
         otpCodeRepository.save(otp);
         
         // Send email
-        emailService.sendOtpEmail(email, otpCode, company);
-        
+        emailService.sendOtpEmail(email, company, otpCode);
+
         log.info("OTP generated and sent for email: {} and company: {}", email, company);
     }
     

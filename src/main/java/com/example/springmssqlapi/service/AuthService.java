@@ -1,5 +1,7 @@
 package com.example.springmssqlapi.service;
 
+import java.util.Optional;
+
 import org.springframework.stereotype.Service;
 
 import com.example.springmssqlapi.dto.AuthResponse;
@@ -24,11 +26,11 @@ public class AuthService {
 	}
     
     public void sendOtp(String email) {
-        // Get vendor details to retrieve company name
-        Vendor vendor = vendorRepository.findByEmail(email)
-                .orElseThrow(() -> new IllegalArgumentException("Vendor not found"));
-        
-        otpService.sendOtp(email, vendor.getName());
+        // Check if vendor exists, if not this will be handled in OtpService
+        Optional<Vendor> vendorOpt = vendorRepository.findByEmail(email);
+        String companyName = vendorOpt.map(Vendor::getName).orElse("Unknown Company");
+
+        otpService.sendOtp(email, companyName);
     }
     
     public AuthResponse verifyOtpAndAuthenticate(String email, String otpCode) {

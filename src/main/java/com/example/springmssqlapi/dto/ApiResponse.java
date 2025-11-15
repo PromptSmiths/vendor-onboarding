@@ -1,4 +1,4 @@
-package com.evoke.springmssqlapi.dto;
+package com.example.springmssqlapi.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
