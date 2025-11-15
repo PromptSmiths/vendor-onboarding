@@ -31,3 +31,5 @@ build/
 
 ### VS Code ###
 .vscode/
+/logs/vendor-onboarding.log
+/logs/vendor-onboarding-error.log
